@@ -19,9 +19,11 @@ import { worker } from "./mocks/server";
 
 const start = async () => {
   await worker.start({
-    // serviceWorker: {
-    // url: "/my-training-app-v3/mockServiceWorker.js",
-    // },
+    serviceWorker: {
+      ...(process.env.NODE_ENV !== "development"
+        ? { url: "/my-training-app/mockServiceWorker.js" }
+        : null),
+    },
     onUnhandledRequest: "bypass",
   });
 

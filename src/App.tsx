@@ -27,8 +27,7 @@ const Settings = lazy(() => import("./routes/settings/Settings"));
 function App() {
   return (
     <ContextsProvider>
-      {/* <BrowserRouter basename="/my-training-app-v3"> */}
-      <BrowserRouter>
+      <BrowserRouter basename="/my-training-app">
         <Routes>
           <Route
             path="/"

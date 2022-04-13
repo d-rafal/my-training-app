@@ -66,7 +66,8 @@
     "sass": "^1.50.0",
     "source-map-explorer": "^2.5.2"
   },
-  "proxy": "http://localhost:3000",
+  "homepage": "https://d-rafal/my-training-app",
+  "proxy": "http://localhost:3000/my-training-app",
   "msw": {
     "workerDirectory": "public"
   }
