@@ -38,12 +38,6 @@ export const fetchTrainings = createAsyncThunk<
 >(
   "trainings/fetch",
   async ({ searchParams }, thunkAPI) => {
-    thunkAPI.signal.addEventListener("abort", () => {
-      console.log(
-        "signal aborted info from eventListener for signal in thunk middleware"
-      );
-    });
-
     const errorTextForUser = "Error during loading trainings!";
 
     try {
