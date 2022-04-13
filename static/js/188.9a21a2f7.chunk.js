@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkmy_training_app=self.webpackChunkmy_training_app||[]).push([[188],{188:function(n,e,t){t.r(e);var i=t(184),r={fontSize:"4rem"};e.default=function(){return(0,i.jsx)("p",{style:r,children:"404"})}}}]);
+//# sourceMappingURL=188.9a21a2f7.chunk.js.map
