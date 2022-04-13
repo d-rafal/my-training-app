@@ -16,8 +16,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "typeRoots": ["./node_modules/@types", "./src/@types"],
-    "sourceMap": true,
-    "types": ["cypress"]
+    "sourceMap": true
   },
-  "include": ["src", "cypress/**/*"]
+  "include": ["src"]
 }
