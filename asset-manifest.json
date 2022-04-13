@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/my-training-app/static/css/main.3311cf8e.css",
-    "main.js": "/my-training-app/static/js/main.05dbaf55.js",
+    "main.js": "/my-training-app/static/js/main.5adfbef8.js",
     "static/js/678.06e141e4.chunk.js": "/my-training-app/static/js/678.06e141e4.chunk.js",
     "static/js/998.cb2921f0.chunk.js": "/my-training-app/static/js/998.cb2921f0.chunk.js",
     "static/js/291.e81f65c4.chunk.js": "/my-training-app/static/js/291.e81f65c4.chunk.js",
@@ -47,7 +47,7 @@
     "static/media/ic_flag_en.svg": "/my-training-app/static/media/ic_flag_en.9a67c937df5590b9817e9e99f8965b2a.svg",
     "index.html": "/my-training-app/index.html",
     "main.3311cf8e.css.map": "/my-training-app/static/css/main.3311cf8e.css.map",
-    "main.05dbaf55.js.map": "/my-training-app/static/js/main.05dbaf55.js.map",
+    "main.5adfbef8.js.map": "/my-training-app/static/js/main.5adfbef8.js.map",
     "678.06e141e4.chunk.js.map": "/my-training-app/static/js/678.06e141e4.chunk.js.map",
     "998.cb2921f0.chunk.js.map": "/my-training-app/static/js/998.cb2921f0.chunk.js.map",
     "291.e81f65c4.chunk.js.map": "/my-training-app/static/js/291.e81f65c4.chunk.js.map",
@@ -59,6 +59,6 @@
   },
   "entrypoints": [
     "static/css/main.3311cf8e.css",
-    "static/js/main.05dbaf55.js"
+    "static/js/main.5adfbef8.js"
   ]
 }
