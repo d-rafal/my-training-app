@@ -16,7 +16,7 @@ export const authHandlers = [
         ctx.status(401),
         ctx.json({
           errors: {
-            errorEmail: "Wrong email address",
+            errorEmail: `Incorrect email address, should be ${sampleUser.email}`,
           },
         })
       );
@@ -26,7 +26,7 @@ export const authHandlers = [
         ctx.status(401),
         ctx.json({
           errors: {
-            errorPassword: "Wrong password",
+            errorPassword: `Incorrect password, should be ${sampleUser.password}`,
           },
         })
       );

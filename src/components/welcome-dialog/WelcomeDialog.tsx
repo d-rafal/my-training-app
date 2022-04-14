@@ -82,7 +82,7 @@ const WelcomeDialog = () => {
           You can start playing with it by entering following user credentials:
         </Typography>
         <ListWithHyphen>
-          <li>email: user1@suer.com</li>
+          <li>email: user1@user.com</li>
           <li>password: 123456</li>
         </ListWithHyphen>
         <Typography sx={{ mb: "0.6rem", mt: "1rem" }}>
