@@ -22,7 +22,7 @@ app, especially if they would cover usage of new libraries.
 
 You can start playing with it by entering following user credentials:
 
-- email: `user1@suer.com`
+- email: `user1@user.com`
 - password: `123456`
 
 Enjoy!
