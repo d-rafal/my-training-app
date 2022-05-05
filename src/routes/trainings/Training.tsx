@@ -155,11 +155,13 @@ const Training = ({ _id }: { _id: EntityId }) => {
         </Box>
       </TrainingAccordion>
 
-      <AddOrEditTrainingExerciseDialog
-        exerciseDialogState={exerciseDialogState}
-        setExerciseDialogState={setExerciseDialogState}
-        trainingSession={trainingSession}
-      />
+      {exerciseDialogState.open && (
+        <AddOrEditTrainingExerciseDialog
+          exerciseDialogState={exerciseDialogState}
+          setExerciseDialogState={setExerciseDialogState}
+          trainingSession={trainingSession}
+        />
+      )}
       <Dialog
         open={openDeleteDialog}
         onClose={handleCloseDialog}

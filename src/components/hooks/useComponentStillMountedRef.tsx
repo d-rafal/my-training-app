@@ -4,8 +4,9 @@ const useComponentStillMountedRef = () => {
   const componentStillMountedRef = useRef(true);
 
   useLayoutEffect(() => {
+    componentStillMountedRef.current = true;
+
     return () => {
-      console.log("TEST unmant");
       componentStillMountedRef.current = false;
     };
   }, []);

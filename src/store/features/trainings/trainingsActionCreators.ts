@@ -66,7 +66,7 @@ export const fetchTrainings = createAsyncThunk<
         });
       }
     } catch (error) {
-      console.error();
+      console.error(error);
       throw new Error(errorTextForUser);
     }
   },
@@ -162,7 +162,7 @@ export const deleteTrainingSession = createAsyncThunk<
         });
       }
     } catch (error) {
-      console.error();
+      console.error(error);
       throw new Error(errorTextForUser);
     }
   },
@@ -227,7 +227,7 @@ export const addTrainingSession = createAsyncThunk<
         });
       }
     } catch (error) {
-      console.error();
+      console.error(error);
       throw new Error(errorTextForUser);
     }
   },
@@ -297,7 +297,7 @@ export const updateExercises = createAsyncThunk<
         });
       }
     } catch (error) {
-      console.error();
+      console.error(error);
       throw new Error(errorTextForUser);
     }
   },

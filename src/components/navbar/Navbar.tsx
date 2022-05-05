@@ -116,6 +116,7 @@ function Navbar() {
   const onLogout = useCallback(async () => {
     dispatch(logoutRequestStarted());
     dispatch(userLoggedOut());
+    localStorage.removeItem("user");
   }, [dispatch]);
 
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {

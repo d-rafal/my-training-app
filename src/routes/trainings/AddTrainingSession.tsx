@@ -1,5 +1,6 @@
 import {
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -16,32 +17,19 @@ import { addTrainingSession } from "../../store/features/trainings/trainingsActi
 import { useAppDispatch } from "../../store/hooks/hooks";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
-import { Field, FieldProps, Form, Formik, FormikErrors } from "formik";
 
 import { commonDateValidation, DatePickerField } from "./FilterByDate";
-import MuiButtonSubmitWithFormik from "../../components/mui/button-submit-with-formik/MuiButtonSubmitWithFormik";
-import { MuiTextFieldPropsFromFormikField } from "../auth/AuthSide";
+import { MuiTextFieldPropsError } from "../auth/AuthSide";
 import { useSelectActionStatusAndError } from "../../store/features/trainings/trainingsSlice";
 import { useSetSnackbarContext } from "../../components/snackbar-provider/SnackbarProvider";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
 
 const maxCommentSigns = 255;
 
-interface FormikValuesType {
+interface FormDataType {
   date: OrNull<Date>;
   comment: "";
 }
-
-const validate = (values: FormikValuesType) => {
-  const errors: FormikErrors<FormikValuesType> = {};
-
-  commonDateValidation(values.date, "date", errors);
-
-  if (values.comment.length > maxCommentSigns) {
-    errors.comment = `Max ${maxCommentSigns} signs`;
-  }
-
-  return errors;
-};
 
 const AddTrainingSession = () => {
   const [actionStatus] = useSelectActionStatusAndError();
@@ -52,6 +40,20 @@ const AddTrainingSession = () => {
   const location = useLocation();
   const [addTrainingDialogOpen, setAddTrainingDialogOpen] = useState(false);
   const requestInProgress = useRef(false);
+
+  const {
+    handleSubmit,
+    control,
+    formState: { isValid, isSubmitting },
+  } = useForm<FormDataType>({
+    defaultValues: {
+      date: new Date(),
+      comment: "",
+    },
+    mode: "all",
+    criteriaMode: "firstError",
+    shouldUnregister: true,
+  });
 
   const setSnackbar = useSetSnackbarContext();
 
@@ -79,6 +81,20 @@ const AddTrainingSession = () => {
     } finally {
       setAddRequestStatus("IDLE");
       handleCloseAddTrainingDialog();
+    }
+  };
+
+  const onSubmit: SubmitHandler<FormDataType> = async (values) => {
+    // protection against submitting form twice
+    if (!requestInProgress.current) {
+      requestInProgress.current = true;
+
+      try {
+        await createTrainingSession(values.date!, values.comment);
+      } finally {
+        requestInProgress.current = false;
+        handleCloseAddTrainingDialog();
+      }
     }
   };
 
@@ -115,66 +131,70 @@ const AddTrainingSession = () => {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <Formik<FormikValuesType>
-          initialValues={{
-            date: new Date(),
-            comment: "",
-          }}
-          validate={validate}
-          onSubmit={async (values, actions) => {
-            // protection against submitting form twice
-            if (!requestInProgress.current) {
-              requestInProgress.current = true;
 
-              try {
-                await createTrainingSession(values.date!, values.comment);
-              } finally {
-                requestInProgress.current = false;
-                handleCloseAddTrainingDialog();
-                actions.setSubmitting(false);
+        <form noValidate onSubmit={handleSubmit(onSubmit)}>
+          <DialogContent
+            dividers={true}
+            sx={{ opacity: actionStatus === "PROCESSING" ? 0.5 : 1 }}
+          >
+            <Stack spacing={0} direction="column" alignItems="center">
+              <Controller
+                render={({ field, fieldState, formState }) => (
+                  <DatePickerField field={field} fieldState={fieldState} />
+                )}
+                name="date"
+                control={control}
+                rules={{
+                  validate: {
+                    ...commonDateValidation,
+                  },
+                }}
+              />
+
+              <Controller
+                render={({ field, fieldState, formState }) => (
+                  <TextField
+                    id="comment"
+                    margin="normal"
+                    fullWidth
+                    label="Comment"
+                    multiline
+                    variant="filled"
+                    autoFocus
+                    inputProps={{ maxLength: maxCommentSigns }}
+                    {...MuiTextFieldPropsError(field, fieldState)}
+                  />
+                )}
+                name="comment"
+                control={control}
+                rules={{
+                  maxLength: {
+                    value: maxCommentSigns,
+                    message: `Max length is ${maxCommentSigns} characters`,
+                  },
+                }}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button type="button" onClick={handleCloseAddTrainingDialog}>
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              size="large"
+              disabled={
+                isSubmitting || !isValid || actionStatus === "PROCESSING"
               }
-            }
-          }}
-        >
-          <Form noValidate>
-            <DialogContent
-              dividers={true}
-              sx={{ opacity: actionStatus === "PROCESSING" ? 0.5 : 1 }}
             >
-              <Stack spacing={0} direction="column" alignItems="center">
-                <Field
-                  name="date"
-                  component={DatePickerField}
-                  label="Training date"
-                ></Field>
-                <Field name="comment">
-                  {({ field, form, meta }: FieldProps) => (
-                    <TextField
-                      id="comment"
-                      {...MuiTextFieldPropsFromFormikField(field, meta)}
-                      margin="normal"
-                      fullWidth
-                      label="Comment"
-                      multiline
-                      variant="filled"
-                      inputProps={{ maxLength: maxCommentSigns }}
-                      autoFocus
-                    />
-                  )}
-                </Field>
-              </Stack>
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCloseAddTrainingDialog}>Cancel</Button>
-              <MuiButtonSubmitWithFormik
-                size="large"
-                actionStatus={actionStatus}
-              >
-                Add
-              </MuiButtonSubmitWithFormik>
-            </DialogActions>
-          </Form>
-        </Formik>
+              {actionStatus === "PROCESSING" && (
+                <CircularProgress size={24} sx={{ mr: "0.5rem" }} />
+              )}
+              Add
+            </Button>
+          </DialogActions>
+        </form>
       </Dialog>
     </>
   );

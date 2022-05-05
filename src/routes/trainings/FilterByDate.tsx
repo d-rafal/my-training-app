@@ -1,24 +1,16 @@
 import { DatePicker, DatePickerProps } from "@mui/lab";
 import {
   Box,
+  Button,
   IconButton,
   Stack,
   TextField,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import {
-  Field,
-  FieldProps,
-  Form,
-  Formik,
-  FormikErrors,
-  useFormikContext,
-} from "formik";
 
 import { useSearchParams } from "react-router-dom";
 import updateUrlQuery from "../../auxiliary/updateUrlQuery";
-import MuiButtonSubmitWithFormik from "../../components/mui/button-submit-with-formik/MuiButtonSubmitWithFormik";
 import { dateToString } from "../../auxiliary/date/dateToString";
 import { TRAININGS_URL_QUERY_KEYS } from "./trainingsConsts";
 import { stringToDate } from "../../auxiliary/date/stringToDate";
@@ -28,7 +20,17 @@ import { isDateValid } from "../../auxiliary/date/isDateValid";
 import HighlightOffIcon from "@mui/icons-material/HighlightOff";
 import { useEffect } from "react";
 
-interface FormikValuesType {
+import {
+  useForm,
+  Controller,
+  ControllerRenderProps,
+  ControllerFieldState,
+  SubmitHandler,
+  UseFormSetValue,
+  UseFormReset,
+} from "react-hook-form";
+
+interface FormDataType {
   "start-date": OrNull<Date>;
   "end-date": OrNull<Date>;
 }
@@ -37,16 +39,17 @@ const minAllowedDate = new Date(Date.UTC(2000, 1, 1, 0, 0, 0));
 
 const ClearFilterByDate = ({
   removeFilterByDateFromUrl,
+  reset,
 }: {
   removeFilterByDateFromUrl: () => void;
+  reset: UseFormReset<FormDataType>;
 }) => {
-  const { resetForm } = useFormikContext();
-
   return (
     <IconButton
+      type="button"
       aria-label="clear filter"
       onClick={() => {
-        resetForm();
+        reset();
         removeFilterByDateFromUrl();
       }}
     >
@@ -55,21 +58,18 @@ const ClearFilterByDate = ({
   );
 };
 
-const InitializeDatesFromUrl = ({
-  dateFilter,
-}: {
-  dateFilter: string | null;
-}) => {
-  const { setFieldValue, values } = useFormikContext<FormikValuesType>();
-
+const useInitializeDatesFromUrl = (
+  dateFilter: string | null,
+  setValue: UseFormSetValue<FormDataType>
+) => {
   useEffect(() => {
     const updateDateInFormikValues = (
       urlDate: string,
-      propName: keyof typeof values
+      propName: keyof FormDataType
     ) => {
       const date = stringToDate(urlDate);
       if (isDateValid(date)) {
-        setFieldValue(propName, date);
+        setValue(propName, date, { shouldValidate: true });
       }
     };
 
@@ -85,8 +85,8 @@ const InitializeDatesFromUrl = ({
         updateDateInFormikValues(dates[2], "end-date");
       }
     } else {
-      setFieldValue("start-date", null);
-      setFieldValue("end-date", null);
+      setValue("start-date", null);
+      setValue("end-date", null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFilter]);
@@ -94,34 +94,31 @@ const InitializeDatesFromUrl = ({
   return null;
 };
 
-export const commonDateValidation = (
-  date: Date | null,
-  fieldName: string,
-  errors: FormikErrors<any>
-) => {
-  if (!date || !isDateValid(date)) {
-    errors[fieldName] = "Enter valid date";
-  } else if (date > new Date()) {
-    errors[fieldName] = "Future date not allowed";
-  } else if (date < minAllowedDate) {
-    errors[fieldName] = `Date before ${
+export const commonDateValidation = {
+  validDate: (date: FormDataType["start-date"]) =>
+    (!!date && isDateValid(date)) || "Enter valid date",
+  notFutureDate: (date: FormDataType["start-date"]) =>
+    (!!date && date < new Date()) || "Future date not allowed",
+  notBeforeMinAllowedDate: (date: FormDataType["start-date"]) =>
+    (!!date && date > minAllowedDate) ||
+    `Date before ${
       minAllowedDate.toLocaleString("pl-PL", { timeZone: "UTC" }).split(",")[0]
-    }`;
-  }
+    }`,
 };
-
-interface DatePickerFieldProps extends FieldProps, DatePickerProps {
-  getShouldDisableDateError: (date: Date) => string;
+interface DatePickerFieldProps<T> extends DatePickerProps {
+  field: ControllerRenderProps<T, any>;
+  fieldState: ControllerFieldState;
+  getShouldDisableDateError?: (date: Date) => string;
 }
 
-export function DatePickerField({
-  form,
+export function DatePickerField<T>({
   field,
+  fieldState,
   ...other
-}: Omit<DatePickerFieldProps, "value" | "onChange" | "renderInput">) {
-  const currentError = form.errors[field.name];
-  const showError = form.touched[field.name] && !!currentError;
-
+}: Omit<
+  DatePickerFieldProps<T>,
+  "value" | "onChange" | "renderInput" | "inputRef"
+>) {
   return (
     <DatePicker
       mask={"__.__.____"}
@@ -131,41 +128,22 @@ export function DatePickerField({
       views={["year", "month", "day"]}
       minDate={minAllowedDate}
       value={field.value}
-      onChange={(date) => {
-        form.setFieldValue(field.name, date, true);
-      }}
+      onChange={field.onChange}
+      inputRef={field.ref}
       renderInput={(params) => (
         <TextField
           {...params}
-          variant="standard"
           name={field.name}
-          error={showError}
-          helperText={
-            (showError && currentError ? currentError : " ") as string
-          }
-          onBlur={form.handleBlur}
+          variant="standard"
+          error={fieldState.invalid}
+          helperText={fieldState.invalid ? fieldState.error?.message : " "}
+          onBlur={field.onBlur}
         />
       )}
       {...other}
     />
   );
 }
-
-const validateDates = (values: FormikValuesType) => {
-  const errors: FormikErrors<FormikValuesType> = {};
-
-  const startDate = values["start-date"];
-  const endDate = values["end-date"];
-
-  commonDateValidation(startDate, "start-date", errors);
-
-  commonDateValidation(endDate, "end-date", errors);
-  if (endDate !== null && startDate !== null && endDate <= startDate) {
-    errors["end-date"] = "End date after start date";
-  }
-
-  return errors;
-};
 
 const FilterByDate = () => {
   const theme = useTheme();
@@ -175,78 +153,110 @@ const FilterByDate = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const {
+    handleSubmit,
+    reset,
+    setValue,
+    control,
+
+    watch,
+  } = useForm<FormDataType>({
+    defaultValues: {
+      "start-date": null,
+      "end-date": null,
+    },
+    mode: "all",
+    criteriaMode: "firstError",
+    shouldUnregister: true,
+  });
+
+  const startDate = watch("start-date");
+
   const dateFilter = searchParams.get(TRAININGS_URL_QUERY_KEYS.filterByDate);
+
+  useInitializeDatesFromUrl(dateFilter, setValue);
+
+  const onSubmit: SubmitHandler<FormDataType> = async (values) => {
+    try {
+      const startDate = values["start-date"] as any as Date;
+      const endDate = values["end-date"] as any as Date;
+
+      const searchUrl = updateUrlQuery(
+        searchParams.toString(),
+        TRAININGS_URL_QUERY_KEYS.filterByDate,
+        "from-" + dateToString(startDate) + "-to-" + dateToString(endDate)
+      );
+      setSearchParams(searchUrl);
+    } finally {
+    }
+  };
 
   return (
     <Box sx={{ pt: "0.0rem", flexGrow: 0 }}>
-      <Formik<FormikValuesType>
-        initialValues={{
-          "start-date": null,
-          "end-date": null,
-        }}
-        validate={validateDates}
-        onSubmit={async (values, actions) => {
-          try {
-            const startDate = values["start-date"] as any as Date;
-            const endDate = values["end-date"] as any as Date;
-
-            const searchUrl = updateUrlQuery(
-              searchParams.toString(),
-              TRAININGS_URL_QUERY_KEYS.filterByDate,
-              "from-" + dateToString(startDate) + "-to-" + dateToString(endDate)
-            );
-            setSearchParams(searchUrl);
-          } finally {
-            actions.setSubmitting(false);
-          }
-        }}
-      >
-        <Box>
-          <Form noValidate>
-            <Stack
-              spacing={matchDownSm ? 1 : 3}
-              direction={matchDownSm ? "column" : "row"}
-              alignItems="center"
-              justifyContent="center"
-              sx={{ flexWrap: "wrap" }}
-            >
-              <InitializeDatesFromUrl dateFilter={dateFilter} />
-              <Field
-                name="start-date"
-                component={DatePickerField}
+      <form noValidate onSubmit={handleSubmit(onSubmit)}>
+        <Stack
+          spacing={matchDownSm ? 1 : 3}
+          direction={matchDownSm ? "column" : "row"}
+          alignItems="center"
+          justifyContent="center"
+          sx={{ flexWrap: "wrap" }}
+        >
+          <Controller
+            render={({ field, fieldState, formState }) => (
+              <DatePickerField
+                field={field}
+                fieldState={fieldState}
                 label="Start date"
-              ></Field>
-              <Field
-                name="end-date"
-                component={DatePickerField}
+              />
+            )}
+            name="start-date"
+            control={control}
+            rules={{
+              validate: {
+                ...commonDateValidation,
+              },
+            }}
+          />
+          <Controller
+            render={({ field, fieldState, formState }) => (
+              <DatePickerField
+                field={field}
+                fieldState={fieldState}
                 label="End date"
-              ></Field>
-              <Box>
-                <MuiButtonSubmitWithFormik
-                  variant="outlined"
-                  size="large"
-                  sx={{}}
-                >
-                  Filter
-                </MuiButtonSubmitWithFormik>
+              />
+            )}
+            name="end-date"
+            control={control}
+            rules={{
+              validate: {
+                ...commonDateValidation,
+                afterStartDate: (date) =>
+                  (date !== null && startDate !== null && date > startDate) ||
+                  "End date after start date",
+              },
+            }}
+          />
+          <Box>
+            <Button type="submit" size="large" variant="outlined">
+              Filter
+            </Button>
 
-                {searchParams.get(TRAININGS_URL_QUERY_KEYS.filterByDate) ? (
-                  <ClearFilterByDate
-                    removeFilterByDateFromUrl={() => {
-                      setSearchParams(
-                        updateUrlQuery(
-                          searchParams.toString(),
-                          TRAININGS_URL_QUERY_KEYS.filterByDate
-                        )
-                      );
-                    }}
-                  />
-                ) : null}
-              </Box>
-            </Stack>
-          </Form>
-        </Box>
-      </Formik>
+            {searchParams.get(TRAININGS_URL_QUERY_KEYS.filterByDate) ? (
+              <ClearFilterByDate
+                removeFilterByDateFromUrl={() => {
+                  setSearchParams(
+                    updateUrlQuery(
+                      searchParams.toString(),
+                      TRAININGS_URL_QUERY_KEYS.filterByDate
+                    )
+                  );
+                }}
+                reset={reset}
+              />
+            ) : null}
+          </Box>
+        </Stack>
+      </form>
     </Box>
   );
 };

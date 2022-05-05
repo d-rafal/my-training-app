@@ -3,7 +3,7 @@ react's environment libraries, such as:
 
 - react
 - redux (Redux Toolkit)
-- formik
+- react-hook-form (in previous commits was formik)
 - material-ui
 
 It's based on **Create React App** environment configuration, fully

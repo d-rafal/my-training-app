@@ -719,6 +719,7 @@ export const trainingsHandlers = [
 
     return res(ctx.delay(ARTIFICIAL_DELAY_MS), ctx.json(trainings));
   }),
+
   rest.patch(
     "/api/trainings/update-exercises",
     function (req: any, res: any, ctx: any) {
