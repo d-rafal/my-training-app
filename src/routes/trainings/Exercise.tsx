@@ -21,10 +21,9 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { useAppDispatch } from "../../store/hooks/hooks";
-import { updateExercises } from "../../store/features/trainings/trainingsActionCreators";
+
 import { IdFromApi } from "../../interfaces/commonInterf";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 
@@ -32,8 +31,12 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import { ExerciseDialogStateType } from "./Training";
-import { useSelectActionStatusAndError } from "../../store/features/trainings/trainingsSlice";
+
 import { useSetSnackbarContext } from "../../components/snackbar-provider/SnackbarProvider";
+
+import { useMutation, useQueryClient } from "react-query";
+import api from "../../api";
+import useQueryUser from "../../react-query-hooks/useQueryUser";
 
 const Exercise = ({
   exercise,
@@ -52,11 +55,50 @@ const Exercise = ({
 }) => {
   const series = exercise.series.map((element) => element.quantity).join(", ");
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const dispatch = useAppDispatch();
+
   const location = useLocation();
-  const [actionStatus] = useSelectActionStatusAndError();
+  const [searchParams] = useSearchParams();
 
   const setSnackbar = useSetSnackbarContext();
+
+  const queryClient = useQueryClient();
+  const user = useQueryUser();
+  const mutation = useMutation(
+    () => {
+      const exercises_shallowCopyForMutation = [...exercises];
+      exercises_shallowCopyForMutation.splice(exerciseIndex, 1);
+      return api.trainings
+        .updateExercises(
+          training_id,
+          exercises_shallowCopyForMutation,
+          location.search
+        )
+        .then(
+          (res) => res,
+          (error) => {
+            throw error;
+          }
+        );
+    },
+    {
+      onSuccess: (data, variables, context) => {
+        if (user) {
+          queryClient.setQueryData(
+            ["trainings", { search: searchParams.toString() }],
+            data
+          );
+        }
+        setSnackbar("Exercise deleted", "info");
+      },
+      onError: (error, variables, context) => {
+        console.error("Failed to add exercise:", error);
+        setSnackbar("Failed to add exercise", "error", undefined, true);
+      },
+      onSettled: (data, error, variables, context) => {
+        handleCloseDialog();
+      },
+    }
+  );
 
   const accordionSummaryId = `exercise_${exercise._id}`;
 
@@ -68,24 +110,8 @@ const Exercise = ({
     setOpenDeleteDialog(false);
   };
 
-  const handleOnDeleteExercise = async () => {
-    try {
-      const exercises_shallowCopyForMutation = [...exercises];
-      exercises_shallowCopyForMutation.splice(exerciseIndex, 1);
-
-      await dispatch(
-        updateExercises({
-          _id: training_id,
-          exercises: exercises_shallowCopyForMutation,
-          urlQuery: location.search,
-        })
-      ).unwrap();
-      setSnackbar("Exercise deleted", "info");
-    } catch (error) {
-      console.error("Failed to add exercise:", error);
-    } finally {
-      handleCloseDialog();
-    }
+  const handleOnDeleteExercise = () => {
+    mutation.mutate();
   };
 
   return (
@@ -198,9 +224,9 @@ const Exercise = ({
           <Button
             onClick={handleOnDeleteExercise}
             autoFocus
-            disabled={actionStatus !== "IDLE"}
+            disabled={mutation.isLoading}
           >
-            {actionStatus === "PROCESSING" && (
+            {mutation.isLoading && (
               <CircularProgress size={24} sx={{ mr: "0.5rem" }} />
             )}
             Yes

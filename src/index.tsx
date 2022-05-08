@@ -3,7 +3,6 @@ import ReactDOM from "react-dom/client";
 import "./index.scss";
 import App from "./App";
 // import reportWebVitals from "./reportWebVitals";
-import store from "./store/store";
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";
 import "@fontsource/roboto/500.css";
@@ -12,10 +11,14 @@ import "@fontsource/roboto/700.css";
 import AppOnError from "./AppOnError";
 import ErrorBoundary from "./components/error-boundary/ErrorBoundary";
 import { CssBaseline } from "@mui/material";
-import { Provider } from "react-redux";
 
 import "./auxiliary/heightAdjustment";
 import { worker } from "./mocks/server";
+
+import { QueryClient, QueryClientProvider } from "react-query";
+import { ReactQueryDevtools } from "react-query/devtools";
+
+const queryClient = new QueryClient();
 
 const start = async () => {
   await worker.start({
@@ -34,9 +37,10 @@ const start = async () => {
     <React.StrictMode>
       <CssBaseline />
       <ErrorBoundary renderOnError={(error) => <AppOnError error={error} />}>
-        <Provider store={store}>
+        <QueryClientProvider client={queryClient}>
           <App />
-        </Provider>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </QueryClientProvider>
       </ErrorBoundary>
     </React.StrictMode>
   );

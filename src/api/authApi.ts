@@ -4,7 +4,6 @@ import {
   fetchData,
   FetchDataReturnValue,
 } from "./requests";
-
 export interface DataFromApi_User {
   user: User;
 }

@@ -16,25 +16,27 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 import {
   ExerciseData,
   SeriesData,
   TrainingSessionDataFromApi,
 } from "../../interfaces/trainingsInterf";
-import { updateExercises } from "../../store/features/trainings/trainingsActionCreators";
-import { useAppDispatch } from "../../store/hooks/hooks";
+
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 
 import { MuiTextFieldPropsError } from "../auth/AuthSide";
-import { nanoid } from "@reduxjs/toolkit";
+import { nanoid } from "nanoid";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { ExerciseDialogStateType } from "./Training";
 
-import { useSelectActionStatusAndError } from "../../store/features/trainings/trainingsSlice";
 import { useSetSnackbarContext } from "../../components/snackbar-provider/SnackbarProvider";
+
+import { useMutation, useQueryClient } from "react-query";
+import api from "../../api";
+import useQueryUser from "../../react-query-hooks/useQueryUser";
 
 import {
   useForm,
@@ -110,9 +112,8 @@ const AddOrEditTrainingExerciseDialog = ({
 }) => {
   const setSnackbar = useSetSnackbarContext();
 
-  const [actionStatus] = useSelectActionStatusAndError();
-  const dispatch = useAppDispatch();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const requestInProgress = useRef(false);
 
   const [indexForValidationTrigger, setIndexForValidationTrigger] = useState<
@@ -121,13 +122,55 @@ const AddOrEditTrainingExerciseDialog = ({
   const [triggerNewSeriesValidation, setTriggerNewSeriesValidation] =
     useState<boolean>(false);
 
+  const user = useQueryUser();
+  const queryClient = useQueryClient();
+  const mutation = useMutation(
+    (exercises: ExerciseData[]) => {
+      return api.trainings
+        .updateExercises(
+          trainingSession?._id ? trainingSession._id : "",
+          exercises,
+          location.search
+        )
+        .then(
+          (res) => res,
+          (error) => {
+            throw error;
+          }
+        );
+    },
+    {
+      onSuccess: (data, variables, context) => {
+        if (user) {
+          queryClient.setQueryData(
+            ["trainings", { search: searchParams.toString() }],
+            data
+          );
+        }
+
+        setSnackbar(
+          exerciseDialogState.initialValues
+            ? "Exercise Updated"
+            : "Exercise Added",
+          "success"
+        );
+      },
+      onError: (error, variables, context) => {
+        console.error("Failed to add exercise:", error);
+        setSnackbar("Failed to add exercise", "error", undefined, true);
+      },
+      onSettled: (data, error, variables, context) => {
+        closeDialog();
+      },
+    }
+  );
+
   const {
     handleSubmit,
     setValue,
     control,
     trigger,
     formState: { isSubmitting, isValid },
-    // formState: { isValid, isSubmitting },
   } = useForm<FormDataType>({
     defaultValues: exerciseDialogState.initialValues
       ? {
@@ -199,7 +242,7 @@ const AddOrEditTrainingExerciseDialog = ({
           }
         );
 
-        await addUpdateExercise(exercises_shallowCopyForMutation);
+        await mutation.mutateAsync(exercises_shallowCopyForMutation);
       } finally {
         requestInProgress.current = false;
       }
@@ -208,28 +251,6 @@ const AddOrEditTrainingExerciseDialog = ({
 
   const closeDialog = () => {
     setExerciseDialogState({ open: false });
-  };
-
-  const addUpdateExercise = async (exercises: ExerciseData[]) => {
-    try {
-      await dispatch(
-        updateExercises({
-          _id: trainingSession?._id ? trainingSession._id : "",
-          exercises: exercises,
-          urlQuery: location.search,
-        })
-      ).unwrap();
-      setSnackbar(
-        exerciseDialogState.initialValues
-          ? "Exercise Updated"
-          : "Exercise Added",
-        "success"
-      );
-    } catch (error) {
-      console.error("Failed to add exercise: ", error);
-    } finally {
-      closeDialog();
-    }
   };
 
   return (
@@ -258,7 +279,7 @@ const AddOrEditTrainingExerciseDialog = ({
       <form noValidate autoComplete="off" onSubmit={handleSubmit(onSubmit)}>
         <DialogContent
           dividers={true}
-          sx={{ opacity: actionStatus === "PROCESSING" ? 0.5 : 1 }}
+          sx={{ opacity: mutation.isLoading ? 0.5 : 1 }}
         >
           <Stack spacing={0} direction="column" alignItems="center">
             <Controller
@@ -515,9 +536,9 @@ const AddOrEditTrainingExerciseDialog = ({
           <Button
             type="submit"
             size="large"
-            disabled={isSubmitting || !isValid || actionStatus === "PROCESSING"}
+            disabled={isSubmitting || !isValid || mutation.isLoading}
           >
-            {actionStatus === "PROCESSING" && (
+            {mutation.isLoading && (
               <CircularProgress size={24} sx={{ mr: "0.5rem" }} />
             )}
             {exerciseDialogState.initialValues ? "Update" : "Add"}

@@ -63,7 +63,7 @@ const useInitializeDatesFromUrl = (
   setValue: UseFormSetValue<FormDataType>
 ) => {
   useEffect(() => {
-    const updateDateInFormikValues = (
+    const updateDateInFormValues = (
       urlDate: string,
       propName: keyof FormDataType
     ) => {
@@ -79,10 +79,10 @@ const useInitializeDatesFromUrl = (
       );
 
       if (dates?.[1]) {
-        updateDateInFormikValues(dates[1], "start-date");
+        updateDateInFormValues(dates[1], "start-date");
       }
       if (dates?.[2]) {
-        updateDateInFormikValues(dates[2], "end-date");
+        updateDateInFormValues(dates[2], "end-date");
       }
     } else {
       setValue("start-date", null);

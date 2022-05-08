@@ -1,55 +1,62 @@
-import { useEffect, useState } from "react";
-
 import { useSearchParams } from "react-router-dom";
-import { useAppDispatch } from "../../store/hooks/hooks";
-import {
-  useSelectActionStatusAndError,
-  useSelectTrainingIds,
-} from "../../store/features/trainings/trainingsSlice";
 import Training from "./Training";
-import { fetchTrainings } from "../../store/features/trainings/trainingsActionCreators";
 import { Alert, Box, Grid, Typography } from "@mui/material";
-
 import CircularProgress from "@mui/material/CircularProgress";
 
-function TrainingList() {
-  const [actionStatus] = useSelectActionStatusAndError();
-  const trainingsIds = useSelectTrainingIds();
+import useQueryTrainings from "../../react-query-hooks/useQueryTrainings";
+import useQueryUser from "../../react-query-hooks/useQueryUser";
 
-  const dispatch = useAppDispatch();
+function TrainingList() {
+  const { data: user } = useQueryUser();
   const [searchParams] = useSearchParams();
 
-  const [firstFetchDone, setFirstFetchDone] = useState(false);
-
-  const searchParamsAsString = searchParams.toString();
-  useEffect(() => {
-    let promise: any = null;
-
-    const fetch = async () => {
-      try {
-        promise = dispatch(
-          fetchTrainings({ searchParams: searchParamsAsString })
-        );
-        await promise;
-      } finally {
-        if (!firstFetchDone) setFirstFetchDone(true);
-      }
-    };
-
-    fetch();
-
-    return () => {
-      if (typeof promise?.abort === "function") {
-        promise.abort();
-      }
-    };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParamsAsString, dispatch]);
+  const { status, data, isFetching } = useQueryTrainings(
+    searchParams.toString(),
+    {
+      select: (data) =>
+        data.body.trainingSessions.map((training) => training._id),
+      enabled: !!user,
+    }
+  );
 
   let renderedElements = null;
 
-  if (actionStatus === "FAILED" && firstFetchDone) {
+  if (status === "idle") {
+    renderedElements = (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100%",
+        }}
+      >
+        <Alert variant="filled" severity="info">
+          No data.
+        </Alert>
+      </Box>
+    );
+  } else if (status === "loading") {
+    renderedElements = (
+      <Box
+        sx={{
+          // position: "absolute",
+          // top: 0,
+          // left: 0,
+          // right: 0,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          flexDirection: "column",
+          minHeight: "20rem",
+          height: "100%",
+        }}
+      >
+        <CircularProgress size={120} sx={{ marginBottom: "1rem" }} />
+        <Typography>Loading...</Typography>
+      </Box>
+    );
+  } else if (status === "error") {
     renderedElements = (
       <Box
         sx={{
@@ -64,49 +71,48 @@ function TrainingList() {
         </Alert>
       </Box>
     );
-  } else {
+  } else if (status === "success") {
     let trainingList = null;
 
-    if (firstFetchDone) {
-      if (trainingsIds.length) {
-        trainingList = (
-          <Box
+    if (data?.length) {
+      trainingList = (
+        <Box
+          sx={{
+            opacity: isFetching ? 0.5 : 1,
+            // opacity: isPreviousData ? 0.5 : 1,
+          }}
+        >
+          <Grid
+            component="ul"
+            container
+            direction="column"
+            rowSpacing={{ xs: 1, sm: 2, md: 3 }}
             sx={{
-              opacity: actionStatus === "PROCESSING" ? 0.5 : 1,
+              listStyle: "none",
+              "& >.MuiGrid-item": { maxWidth: "100%" },
             }}
           >
-            <Grid
-              component="ul"
-              container
-              direction="column"
-              rowSpacing={{ xs: 1, sm: 2, md: 3 }}
-              sx={{
-                listStyle: "none",
-                "& >.MuiGrid-item": { maxWidth: "100%" },
-              }}
-            >
-              {trainingsIds?.map((_id) => (
-                <Training key={_id} _id={_id} />
-              ))}
-            </Grid>
-          </Box>
-        );
-      } else if (actionStatus === "IDLE") {
-        trainingList = (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <Alert variant="filled" severity="info">
-              No data.
-            </Alert>
-          </Box>
-        );
-      }
+            {data?.map((_id) => (
+              <Training key={_id} _id={_id} />
+            ))}
+          </Grid>
+        </Box>
+      );
+    } else {
+      trainingList = (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            width: "100%",
+          }}
+        >
+          <Alert variant="filled" severity="info">
+            No data.
+          </Alert>
+        </Box>
+      );
     }
 
     renderedElements = (
@@ -116,25 +122,6 @@ function TrainingList() {
         }}
       >
         {trainingList}
-        {actionStatus === "PROCESSING" && !trainingsIds.length ? (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              flexDirection: "column",
-              minHeight: "20rem",
-              height: "100%",
-            }}
-          >
-            <CircularProgress size={120} sx={{ marginBottom: "1rem" }} />
-            <Typography>Loading...</Typography>
-          </Box>
-        ) : null}
       </Box>
     );
   }

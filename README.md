@@ -2,7 +2,7 @@ This **SPA** is a simple demonstration of usage some of
 react's environment libraries, such as:
 
 - react
-- redux (Redux Toolkit)
+- react-query (in previous commits was Redux Toolkit)
 - react-hook-form (in previous commits was formik)
 - material-ui
 

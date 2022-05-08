@@ -1,8 +1,4 @@
 import * as React from "react";
-import {
-  selectTrainingById,
-  useSelectActionStatusAndError,
-} from "../../store/features/trainings/trainingsSlice";
 import Exercise from "./Exercise";
 import {
   Button,
@@ -16,10 +12,10 @@ import {
 } from "@mui/material";
 import DeleteIconButton from "../../components/mui/icon-buttons/DeleteIconButton";
 import TrainingAccordion from "./TrainingAccordion";
-import { EntityId } from "@reduxjs/toolkit";
-import { useAppDispatch, useAppSelector } from "../../store/hooks/hooks";
-import { deleteTrainingSession } from "../../store/features/trainings/trainingsActionCreators";
-import { TRAININGS_DEFAULT_URL_QUERY } from "./trainingsConsts";
+import {
+  TRAININGS_DEFAULT_URL_QUERY,
+  TRAININGS_URL_QUERY_KEYS,
+} from "./trainingsConsts";
 import { useLocation, useSearchParams } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 import { Box } from "@mui/system";
@@ -27,6 +23,16 @@ import AddOrEditTrainingExerciseDialog from "./AddOrEditTrainingExerciseDialog";
 
 import { ExerciseDataFromApi } from "../../interfaces/trainingsInterf";
 import { useSetSnackbarContext } from "../../components/snackbar-provider/SnackbarProvider";
+
+import { useQueryClient, useMutation, Query } from "react-query";
+import api from "../../api";
+
+import useQueryTrainings, {
+  TrainingsQueryKey,
+} from "../../react-query-hooks/useQueryTrainings";
+import useQueryUser from "../../react-query-hooks/useQueryUser";
+import updateUrlQuery from "../../auxiliary/updateUrlQuery";
+import { IdFromApi } from "../../interfaces/commonInterf";
 
 export interface ExerciseDialogStateType {
   open: boolean;
@@ -59,22 +65,90 @@ const trainingSessionDateInLocal = (dateISOString: string) => {
   return `${day}-${month}-${year} ${hour}:${minute}`;
 };
 
-const Training = ({ _id }: { _id: EntityId }) => {
-  const trainingSession = useAppSelector((state) =>
-    selectTrainingById(state, _id)
-  );
+const Training = ({ _id }: { _id: IdFromApi }) => {
+  const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+
+  const user = useQueryUser();
+
+  const { data: trainingSession } = useQueryTrainings(searchParams.toString(), {
+    select: (data) =>
+      data.body.trainingSessions.find((training) => training._id === _id),
+    enabled: false,
+    notifyOnChangeProps: ["data"],
+  });
+
   const [openDeleteDialog, setOpenDeleteDialog] = React.useState(false);
   const [exerciseDialogState, setExerciseDialogState] =
     React.useState<ExerciseDialogStateType>({
       open: false,
     });
-  const dispatch = useAppDispatch();
-  const location = useLocation();
-  const [, setSearchParams] = useSearchParams();
 
   const setSnackbar = useSetSnackbarContext();
 
-  const [actionStatus] = useSelectActionStatusAndError();
+  const locationSearchForMutation = location.search
+    ? location.search
+    : TRAININGS_DEFAULT_URL_QUERY;
+
+  const mutation = useMutation(
+    () =>
+      api.trainings.deleteTrainingSession(_id, locationSearchForMutation).then(
+        (res) => res,
+        (error) => {
+          throw error;
+        }
+      ),
+    {
+      onSuccess: (data, variables, context) => {
+        if (user) {
+          queryClient.setQueryData(
+            ["trainings", { search: searchParams.toString() }],
+            data
+          );
+
+          const pageUrl = new RegExp(
+            `${TRAININGS_URL_QUERY_KEYS.page}=([^&]*)`
+          ).exec(locationSearchForMutation)?.[1];
+
+          if (pageUrl !== String(data.body.currentPage)) {
+            const searchUrl = updateUrlQuery(
+              locationSearchForMutation,
+              TRAININGS_URL_QUERY_KEYS.page,
+              String(data.body.currentPage)
+            );
+            setSearchParams(searchUrl);
+          }
+        }
+
+        queryClient.resetQueries({
+          predicate: (query) =>
+            query.queryKey[0] === "trainings" &&
+            (
+              query as any as Query<
+                unknown,
+                unknown,
+                unknown,
+                TrainingsQueryKey
+              >
+            ).queryKey[1].search !== searchParams.toString(),
+        });
+        setSnackbar("Training session deleted", "info");
+      },
+      onError: (error, variables, context) => {
+        console.error("Failed to delete training session:", error);
+        setSnackbar(
+          "Failed to delete training session",
+          "error",
+          undefined,
+          true
+        );
+      },
+      onSettled: (data, error, variables, context) => {
+        handleCloseDialog();
+      },
+    }
+  );
 
   const accordionSummaryId = `session_${_id}`;
 
@@ -95,23 +169,8 @@ const Training = ({ _id }: { _id: EntityId }) => {
     setOpenDeleteDialog(false);
   };
 
-  const handleOnDeleteTrainingSession = async () => {
-    try {
-      await dispatch(
-        deleteTrainingSession({
-          _id,
-          query: location.search
-            ? location.search
-            : TRAININGS_DEFAULT_URL_QUERY,
-          setSearchParams,
-        })
-      );
-      setSnackbar("Training session deleted", "info");
-    } catch (error) {
-      console.error("Failed to delete training session:", error);
-    } finally {
-      handleCloseDialog();
-    }
+  const handleOnDeleteTrainingSession = () => {
+    mutation.mutate();
   };
 
   return (
@@ -187,9 +246,9 @@ const Training = ({ _id }: { _id: EntityId }) => {
           <Button
             onClick={handleOnDeleteTrainingSession}
             autoFocus
-            disabled={actionStatus !== "IDLE"}
+            disabled={mutation.isLoading}
           >
-            {actionStatus === "PROCESSING" && (
+            {mutation.isLoading && (
               <CircularProgress size={24} sx={{ mr: "0.5rem" }} />
             )}
             Yes

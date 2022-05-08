@@ -1,8 +1,8 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { useSelectUser } from "../../store/features/auth/authSlice";
+import useQueryUser from "../../react-query-hooks/useQueryUser";
 
 const RequireAuth = ({ children }: { readonly children: React.ReactNode }) => {
-  const user = useSelectUser();
+  const { data: user } = useQueryUser();
   const location = useLocation();
 
   if (!user) {

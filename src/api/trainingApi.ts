@@ -1,4 +1,3 @@
-import { EntityId } from "@reduxjs/toolkit";
 import { AnyObject, IdFromApi } from "../interfaces/commonInterf";
 import { OrUndefined } from "../interfaces/generalInterf";
 import {
@@ -80,7 +79,7 @@ const updateExercises_api = async (
   ) as Promise<FetchDataReturnValue<TrainingsFromApi>>;
 };
 
-const deleteTrainingSession_api = async (_id: EntityId, query?: string) => {
+const deleteTrainingSession_api = async (_id: IdFromApi, query?: string) => {
   let bodyJSON: OrUndefined<BodyInit> = undefined;
   let options: OrUndefined<FetchDataOptions> = undefined;
 

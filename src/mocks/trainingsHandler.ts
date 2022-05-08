@@ -1,4 +1,4 @@
-import { nanoid } from "@reduxjs/toolkit";
+import { nanoid } from "nanoid";
 import { rest } from "msw";
 import tryConvertToFiniteNumber from "../auxiliary/tryConvertToFiniteNumber";
 import {

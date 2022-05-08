@@ -1,9 +1,7 @@
 import { Alert, AlertColor, Snackbar } from "@mui/material";
+import { nanoid } from "nanoid";
 import { useEffect, useState } from "react";
 import createCtx from "../../auxiliary/createCtx";
-
-import { nanoid } from "@reduxjs/toolkit";
-import { useSelectActionStatusAndError } from "../../store/features/trainings/trainingsSlice";
 
 const [useSetSnackbarContext, SetSnackbarContextProvider] =
   createCtx<
@@ -36,8 +34,6 @@ const SnackbarProvider = ({ children }: { children: React.ReactNode }) => {
     undefined
   );
 
-  const [actionStatus, error] = useSelectActionStatusAndError();
-
   const setSnackbar = (
     message: string,
     type: AlertColor,
@@ -49,17 +45,6 @@ const SnackbarProvider = ({ children }: { children: React.ReactNode }) => {
       { message, key: nanoid(), type, autoHideDuration, switchOffAutoHide },
     ]);
   };
-
-  useEffect(() => {
-    if (actionStatus === "FAILED") {
-      setSnackbar(
-        error ? error : "Error during operation occurred",
-        "error",
-        undefined,
-        true
-      );
-    }
-  }, [actionStatus, error]);
 
   useEffect(() => {
     if (snackPack.length && !messageInfo) {

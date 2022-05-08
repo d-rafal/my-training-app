@@ -56,7 +56,7 @@ const WelcomeDialog = () => {
         </Typography>
         <ListWithHyphen style={{ listStyle: "" }}>
           <li>react</li>
-          <li>redux (Redux Toolkit)</li>
+          <li>react-query (in previous commits was Redux Toolkit)</li>
           <li>react-hook-form (in previous commits was formik)</li>
           <li>material-ui</li>
         </ListWithHyphen>

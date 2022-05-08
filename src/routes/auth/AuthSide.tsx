@@ -13,9 +13,8 @@ import Typography from "@mui/material/Typography";
 import sideImg from "../../img/login-side-v8.png";
 import Copyright from "./Copyright";
 import { useRef, useState } from "react";
-import { authenticateUser } from "../../store/features/auth/authActionsCreators";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "../../store/hooks/hooks";
+
 import {
   IconButton,
   InputAdornment,
@@ -26,7 +25,6 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import * as Yup from "yup";
 
-import { selectActionStatus } from "../../store/features/auth/authSlice";
 import { useSetSnackbarContext } from "../../components/snackbar-provider/SnackbarProvider";
 import { ObjectShape } from "yup/lib/object";
 import {
@@ -37,7 +35,15 @@ import {
   SubmitHandler,
 } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
-
+import { useQueryClient } from "react-query";
+import {
+  DataFromApi_ValidationErrors,
+  resWithUser,
+  resWithValidationErrors,
+} from "../../api/authApi";
+import { User } from "../../interfaces/authInterf";
+import api from "../../api";
+import { ActionStatus } from "../../interfaces/generalInterf";
 interface FormDataType {
   email: string;
   password: string;
@@ -84,14 +90,18 @@ const isLocationStateWithFrom = (
 };
 
 const AuthSide = () => {
+  const [actionStatus, setActionStatus] = useState<ActionStatus>("IDLE");
+
   const [showPassword, setShowPassword] = useState(false);
-  const dispatch = useAppDispatch();
+
   const navigate = useNavigate();
   const location = useLocation();
-  const actionStatus = useAppSelector(selectActionStatus);
+
   const setSnackbar = useSetSnackbarContext();
 
   const requestInProgress = useRef(false);
+
+  const queryClient = useQueryClient();
 
   const {
     handleSubmit,
@@ -120,36 +130,66 @@ const AuthSide = () => {
   }
 
   const onSubmit: SubmitHandler<FormDataType> = async (data) => {
+    function isResDataUser(resData: any): resData is User {
+      return resData.email;
+    }
+
+    function isResDataErrors(
+      resData: any
+    ): resData is DataFromApi_ValidationErrors {
+      return resData.errors;
+    }
+
     // protection against submitting form twice
     if (!requestInProgress.current) {
       requestInProgress.current = true;
 
-      try {
-        const resultAction = await dispatch(
-          authenticateUser({
-            email: data.email,
-            password: data.password,
-          })
-        );
+      setActionStatus("PROCESSING");
 
-        if (authenticateUser.fulfilled.match(resultAction)) {
+      try {
+        const resData = await api.auth
+          .authenticate(data.email, data.password)
+          .then(
+            (res) => {
+              if (res.ok && resWithUser(res)) {
+                return res.body.user;
+              } else if (res.status === 401 && resWithValidationErrors(res)) {
+                return res.body;
+              } else {
+                throw new Error(
+                  "Unexpected response during User authentication"
+                );
+              }
+            },
+            (error) => {
+              throw error;
+            }
+          );
+
+        if (isResDataUser(resData)) {
+          queryClient.setQueryData("user", resData);
+          localStorage.setItem("user", JSON.stringify(resData));
+
           navigate(from, { replace: true });
-        } else if (resultAction.payload) {
-          if (resultAction.payload.errors.errorEmail) {
+        } else if (isResDataErrors(resData)) {
+          if (resData.errors.errorEmail) {
             setError("email", {
               type: "from server",
-              message: resultAction.payload.errors.errorEmail,
+              message: resData.errors.errorEmail,
             });
-          } else if (resultAction.payload.errors.errorPassword) {
+          } else if (resData.errors.errorPassword) {
             setError("password", {
               type: "from server",
-              message: resultAction.payload.errors.errorPassword,
+              message: resData.errors.errorPassword,
             });
           }
         } else {
-          setSnackbar("Error during authentication", "error", undefined, true);
+          throw new Error();
         }
+      } catch (e) {
+        setSnackbar("Error during authentication", "error", undefined, true);
       } finally {
+        setActionStatus("IDLE");
         requestInProgress.current = false;
       }
     }

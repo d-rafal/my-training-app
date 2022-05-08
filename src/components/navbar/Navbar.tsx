@@ -8,13 +8,6 @@ import {
 
 import { Link } from "react-router-dom";
 
-import { useAppDispatch } from "../../store/hooks/hooks";
-
-import {
-  logoutRequestStarted,
-  userLoggedOut,
-  useSelectUser,
-} from "../../store/features/auth/authSlice";
 import {
   Avatar,
   Box,
@@ -51,6 +44,8 @@ import Logout from "@mui/icons-material/Logout";
 import LoginIcon from "@mui/icons-material/Login";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import { TitleContext } from "../title-provider/TitleProvider";
+import { useQueryClient } from "react-query";
+import useQueryUser from "../../react-query-hooks/useQueryUser";
 
 const profileLinks = [
   {
@@ -88,12 +83,13 @@ const AppBarStyled = styled(MuiAppBar, {
 }));
 
 function Navbar() {
-  const user = useSelectUser();
-  const dispatch = useAppDispatch();
+  const { data: user } = useQueryUser();
+
+  const queryClient = useQueryClient();
 
   const [anchorElUser, setAnchorElUser] = useState<null | HTMLElement>(null);
 
-  const setDrowerOpen = useDrawerSetOpen();
+  const setDrawerOpen = useDrawerSetOpen();
   const drawerOpen = useContext(OpenDrawerContext);
 
   const title = useContext(TitleContext);
@@ -114,10 +110,10 @@ function Navbar() {
   });
 
   const onLogout = useCallback(async () => {
-    dispatch(logoutRequestStarted());
-    dispatch(userLoggedOut());
     localStorage.removeItem("user");
-  }, [dispatch]);
+    queryClient.setQueryData("user", undefined);
+    queryClient.removeQueries("trainings");
+  }, [queryClient]);
 
   const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElUser(event.currentTarget);
@@ -146,7 +142,7 @@ function Navbar() {
           size="large"
           aria-label="expand/collapse navigation menu"
           aria-controls="nav-drawer-menu"
-          onClick={() => setDrowerOpen((open) => !open)}
+          onClick={() => setDrawerOpen((open) => !open)}
           color="inherit"
           sx={{
             display: { xs: "flex;", md: "none" },
@@ -159,7 +155,7 @@ function Navbar() {
           aria-label="open navigation menu"
           aria-controls="nav-drawer-menu"
           aria-haspopup="true"
-          onClick={() => setDrowerOpen((open) => !open)}
+          onClick={() => setDrawerOpen((open) => !open)}
           color="inherit"
           sx={{
             display: { xs: "none;", md: "flex" },

@@ -15,6 +15,9 @@ import { lazy } from "react";
 import AuthSide from "./routes/auth/AuthSide";
 import ContextsProvider from "./components/contexts-provider/ContextsProvider";
 import WelcomeDialog from "./components/welcome-dialog/WelcomeDialog";
+import { useQueryClient } from "react-query";
+import { OrNull } from "./interfaces/generalInterf";
+import { User } from "./interfaces/authInterf";
 
 const Trainings = lazy(() => import("./routes/trainings/Trainings"));
 const Progress = lazy(() => import("./routes/progress/Progress"));
@@ -24,7 +27,22 @@ const Profile = lazy(() => import("./routes/profile/Profile"));
 const MyAccount = lazy(() => import("./routes/my-account/MyAccount"));
 const Settings = lazy(() => import("./routes/settings/Settings"));
 
+const initialUserState = (userInitialState: OrNull<User>): OrNull<User> => {
+  let userLocalStorageState_JSON = localStorage.getItem("user");
+  let userLocalStorageState: OrNull<User> = null;
+
+  if (userLocalStorageState_JSON)
+    userLocalStorageState = JSON.parse(userLocalStorageState_JSON);
+
+  return userLocalStorageState ? userLocalStorageState : userInitialState;
+};
+
 function App() {
+  const queryClient = useQueryClient();
+
+  const user = initialUserState(null);
+  if (user) queryClient.setQueryData("user", user);
+
   return (
     <ContextsProvider>
       <BrowserRouter basename="/my-training-app">

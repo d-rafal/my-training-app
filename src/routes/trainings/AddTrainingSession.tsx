@@ -11,18 +11,22 @@ import {
   TextField,
 } from "@mui/material";
 import { useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { ActionStatus, OrNull } from "../../interfaces/generalInterf";
-import { addTrainingSession } from "../../store/features/trainings/trainingsActionCreators";
-import { useAppDispatch } from "../../store/hooks/hooks";
+
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
 
 import { commonDateValidation, DatePickerField } from "./FilterByDate";
 import { MuiTextFieldPropsError } from "../auth/AuthSide";
-import { useSelectActionStatusAndError } from "../../store/features/trainings/trainingsSlice";
+
 import { useSetSnackbarContext } from "../../components/snackbar-provider/SnackbarProvider";
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
+
+import { Query, useMutation, useQueryClient } from "react-query";
+import api from "../../api";
+import useQueryUser from "../../react-query-hooks/useQueryUser";
+import { TrainingsQueryKey } from "../../react-query-hooks/useQueryTrainings";
 
 const maxCommentSigns = 255;
 
@@ -32,11 +36,8 @@ interface FormDataType {
 }
 
 const AddTrainingSession = () => {
-  const [actionStatus] = useSelectActionStatusAndError();
-
   const [, setAddRequestStatus] = useState<ActionStatus>("IDLE");
 
-  const dispatch = useAppDispatch();
   const location = useLocation();
   const [addTrainingDialogOpen, setAddTrainingDialogOpen] = useState(false);
   const requestInProgress = useRef(false);
@@ -57,6 +58,66 @@ const AddTrainingSession = () => {
 
   const setSnackbar = useSetSnackbarContext();
 
+  const queryClient = useQueryClient();
+  const user = useQueryUser();
+  const [searchParams] = useSearchParams();
+
+  const mutation = useMutation(
+    ({ date, comment }: { date: Date; comment: string }) =>
+      api.trainings
+        .addTrainingSession(
+          {
+            date: date.toISOString(),
+            comment,
+            exercises: [],
+          },
+          location.search
+        )
+        .then(
+          (res) => res,
+          (error) => {
+            throw error;
+          }
+        ),
+    {
+      onSuccess: (data, variables, context) => {
+        if (user) {
+          queryClient.setQueryData(
+            ["trainings", { search: searchParams.toString() }],
+            data
+          );
+
+          queryClient.resetQueries({
+            predicate: (query) =>
+              query.queryKey[0] === "trainings" &&
+              (
+                query as any as Query<
+                  unknown,
+                  unknown,
+                  unknown,
+                  TrainingsQueryKey
+                >
+              ).queryKey[1].search !== searchParams.toString(),
+          });
+        }
+        setSnackbar("Training session added", "success");
+      },
+      onError: (error, variables, context) => {
+        console.error("Failed to add new training session:", error);
+        setSnackbar(
+          "Failed to add new training session",
+          "error",
+          undefined,
+          true
+        );
+      },
+      onSettled: (data, error, variables, context) => {
+        setAddRequestStatus("IDLE");
+        handleCloseAddTrainingDialog();
+      },
+    }
+  );
+
   const handleOpenAddTrainingDialog = () => {
     setAddTrainingDialogOpen(true);
   };
@@ -65,32 +126,16 @@ const AddTrainingSession = () => {
     setAddTrainingDialogOpen(false);
   };
 
-  const createTrainingSession = async (date: Date, comment: string) => {
-    try {
-      setAddRequestStatus("PROCESSING");
-
-      await dispatch(
-        addTrainingSession({
-          trainingSession: { date: date.toISOString(), comment, exercises: [] },
-          urlQuery: location.search,
-        })
-      ).unwrap();
-      setSnackbar("Training session added", "success");
-    } catch (error) {
-      console.error("Failed to add new training session:", error);
-    } finally {
-      setAddRequestStatus("IDLE");
-      handleCloseAddTrainingDialog();
-    }
-  };
-
   const onSubmit: SubmitHandler<FormDataType> = async (values) => {
     // protection against submitting form twice
     if (!requestInProgress.current) {
       requestInProgress.current = true;
 
       try {
-        await createTrainingSession(values.date!, values.comment);
+        await mutation.mutateAsync({
+          date: values.date!,
+          comment: values.comment,
+        });
       } finally {
         requestInProgress.current = false;
         handleCloseAddTrainingDialog();
@@ -135,7 +180,7 @@ const AddTrainingSession = () => {
         <form noValidate onSubmit={handleSubmit(onSubmit)}>
           <DialogContent
             dividers={true}
-            sx={{ opacity: actionStatus === "PROCESSING" ? 0.5 : 1 }}
+            sx={{ opacity: mutation.isLoading ? 0.5 : 1 }}
           >
             <Stack spacing={0} direction="column" alignItems="center">
               <Controller
@@ -184,11 +229,9 @@ const AddTrainingSession = () => {
             <Button
               type="submit"
               size="large"
-              disabled={
-                isSubmitting || !isValid || actionStatus === "PROCESSING"
-              }
+              disabled={isSubmitting || !isValid || mutation.isLoading}
             >
-              {actionStatus === "PROCESSING" && (
+              {mutation.isLoading && (
                 <CircularProgress size={24} sx={{ mr: "0.5rem" }} />
               )}
               Add

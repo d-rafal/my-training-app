@@ -4,13 +4,19 @@ import { Link, useSearchParams } from "react-router-dom";
 import tryConvertToFiniteNumber from "../../auxiliary/tryConvertToFiniteNumber";
 import updateUrlQuery from "../../auxiliary/updateUrlQuery";
 
-import { selectNumberOfPages } from "../../store/features/trainings/trainingsSlice";
-import { useAppSelector } from "../../store/hooks/hooks";
 import { TRAININGS_URL_QUERY_KEYS } from "./trainingsConsts";
 
+import useQueryTrainings from "../../react-query-hooks/useQueryTrainings";
+
 const Paginate = () => {
-  const numberOfPages = useAppSelector(selectNumberOfPages);
   const [searchParams] = useSearchParams();
+
+  const { data: numberOfPages } = useQueryTrainings(searchParams.toString(), {
+    select: (data) => data.body.numberOfPages,
+    keepPreviousData: true,
+    enabled: false,
+    notifyOnChangeProps: ["data"],
+  });
 
   let currentPage = tryConvertToFiniteNumber(
     searchParams.get(TRAININGS_URL_QUERY_KEYS.page)
